@@ -1,0 +1,775 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AccountType {
+  STAFF
+  DINER
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  OWNER
+  MANAGER
+  HOST
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum ReservationSource {
+  WIDGET
+  PHONE
+  WALK_IN
+  MARKETPLACE
+  GOOGLE
+  OPENTABLE
+  THEFORK
+  INSTAGRAM
+}
+
+enum TableStatus {
+  FREE
+  RESERVED
+  OCCUPIED
+  BLOCKED
+}
+
+enum NotificationType {
+  CONFIRMATION
+  REMINDER_24H
+  REMINDER_2H
+  CANCELLATION
+  WAITLIST
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum AverageTicketRange {
+  LT_15
+  RANGE_15_30
+  RANGE_30_50
+  GT_50
+}
+
+enum DressCode {
+  CASUAL
+  SMART_CASUAL
+  FORMAL
+  ELEGANT
+  NO_REQUIREMENT
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+enum CampaignChannel {
+  EMAIL
+  SMS
+  WHATSAPP
+}
+
+enum DeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum PromoType {
+  PERCENT
+  FIXED
+}
+
+enum PosProvider {
+  SQUARE
+  HOLDED
+}
+
+enum PosIntegrationStatus {
+  DISCONNECTED
+  CONNECTED
+  ERROR
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  passwordHash        String
+  accountType         AccountType          @default(STAFF)
+  loyaltyPoints       Int                  @default(0)
+  referralCode        String?              @unique
+  isSuperAdmin        Boolean              @default(false)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  memberships         Membership[]
+  favorites           Favorite[]
+  dinerReservations   Reservation[]        @relation("DinerReservations")
+  reviews             Review[]
+  guestNotes          GuestNote[]
+  loyaltyTransactions LoyaltyTransaction[]
+  rewardRedemptions   RewardRedemption[]
+  referralsMade       Referral[]           @relation("Referrer")
+  referralReceived    Referral?            @relation("Referred")
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  venues    Venue[]
+}
+
+model Venue {
+  id                            String                  @id @default(cuid())
+  organizationId                String
+  slug                          String                  @unique
+  name                          String
+  address                       String?
+  phone                         String?
+  timezone                      String                  @default("Europe/Madrid")
+  currency                      String                  @default("EUR")
+  language                      String                  @default("es")
+  primaryColor                  String                  @default("#1a1a2e")
+  logoUrl                       String?
+  capacityMode                  String                  @default("simple")
+  totalCapacity                 Int                     @default(50)
+  slotIntervalMinutes           Int                     @default(15)
+  cancellationHours             Int                     @default(24)
+  depositRequired               Boolean                 @default(false)
+  agentTableOptimizationEnabled Boolean                 @default(false)
+  agentChatEnabled              Boolean                 @default(false)
+  maxPartySize                  Int                     @default(12)
+  bufferMinutes                 Int                     @default(15)
+  isActive                      Boolean                 @default(true)
+  isListedOnMarketplace         Boolean                 @default(false)
+  city                          String?
+  postalCode                    String?
+  latitude                      Float?
+  longitude                     Float?
+  googlePlaceId                 String?
+  businessHours                 Json?
+  menuUrl                       String?
+  galleryUrls                   String[]                @default([])
+  description                   String?
+  coverImageUrl                 String?
+  averageRating                 Float                   @default(0)
+  reviewCount                   Int                     @default(0)
+  depositAmountCents            Int                     @default(0)
+  marketplaceCommissionBps      Int                     @default(300)
+  establishmentTypes            String[]                @default([])
+  cuisineTypes                  String[]                @default([])
+  signatureDishes               String[]                @default([])
+  idealFor                      String[]                @default([])
+  venueFeatures                 String[]                @default([])
+  neighborhood                  String?
+  averageTicketRange            AverageTicketRange?
+  hasDailyMenu                  Boolean                 @default(false)
+  dailyMenuDescription          String?
+  awardBadges                   String[]                @default([])
+  michelinStars                 Int?
+  fiftyBestRank                 Int?
+  instagramUrl                  String?
+  tripAdvisorUrl                String?
+  theForkUrl                    String?
+  tiktokUrl                     String?
+  preferenceTags                String[]                @default([])
+  dressCode                     DressCode?
+  createdAt                     DateTime                @default(now())
+  updatedAt                     DateTime                @updatedAt
+  organization                  Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  memberships                   Membership[]
+  services                      Service[]
+  zones                         Zone[]
+  guests                        Guest[]
+  reservations                  Reservation[]
+  waitlistEntries               WaitlistEntry[]
+  availabilityBlocks            AvailabilityBlock[]
+  closureExceptions             ClosureException[]
+  notificationLogs              NotificationLog[]
+  favorites                     Favorite[]
+  reviews                       Review[]
+  guestSegments                 GuestSegment[]
+  campaigns                     Campaign[]
+  promoCodes                    PromoCode[]
+  posIntegrations               PosIntegration[]
+  integrationConnections        IntegrationConnection[]
+  agentConversations            AgentConversation[]
+  channelIdentities             ChannelIdentity[]
+
+  @@index([organizationId])
+  @@index([isListedOnMarketplace, city])
+  @@index([latitude, longitude])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId])
+  @@index([userId])
+}
+
+model Membership {
+  id        String   @id @default(cuid())
+  userId    String
+  venueId   String
+  role      UserRole @default(HOST)
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, venueId])
+  @@index([venueId])
+}
+
+model Service {
+  id                 String              @id @default(cuid())
+  venueId            String
+  name               String
+  sortOrder          Int                 @default(0)
+  durationMinutes    Int                 @default(90)
+  isActive           Boolean             @default(true)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  venue              Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  schedules          ServiceSchedule[]
+  reservations       Reservation[]
+  waitlistEntries    WaitlistEntry[]
+  availabilityBlocks AvailabilityBlock[]
+
+  @@index([venueId])
+}
+
+model ServiceSchedule {
+  id        String  @id @default(cuid())
+  serviceId String
+  dayOfWeek Int
+  openTime  String
+  closeTime String
+  isActive  Boolean @default(true)
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, dayOfWeek])
+}
+
+model ClosureException {
+  id      String   @id @default(cuid())
+  venueId String
+  date    DateTime @db.Date
+  reason  String?
+  venue   Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, date])
+}
+
+model Zone {
+  id            String  @id @default(cuid())
+  venueId       String
+  name          String
+  sortOrder     Int     @default(0)
+  layoutWidth   Int     @default(800)
+  layoutHeight  Int     @default(600)
+  backgroundUrl String?
+  venue         Venue   @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  tables        Table[]
+
+  @@index([venueId])
+}
+
+model Table {
+  id           String             @id @default(cuid())
+  zoneId       String
+  name         String
+  minCapacity  Int                @default(1)
+  maxCapacity  Int                @default(4)
+  status       TableStatus        @default(FREE)
+  posX         Float              @default(0)
+  posY         Float              @default(0)
+  width        Float              @default(80)
+  height       Float              @default(80)
+  shape        String             @default("rect")
+  rotation     Int                @default(0)
+  zone         Zone               @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  reservations ReservationTable[]
+
+  @@index([zoneId])
+}
+
+model Guest {
+  id                 String              @id @default(cuid())
+  venueId            String
+  email              String?
+  phone              String?
+  firstName          String
+  lastName           String?
+  notes              String?
+  allergies          String?
+  tags               String[]            @default([])
+  visitCount         Int                 @default(0)
+  noShowCount        Int                 @default(0)
+  lastVisitAt        DateTime?
+  lifetimeSpendCents Int                 @default(0)
+  marketingEmail     Boolean             @default(false)
+  marketingSms       Boolean             @default(false)
+  marketingWhatsapp  Boolean             @default(false)
+  preferredLanguage  String?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  venue              Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  reservations       Reservation[]
+  waitlistEntries    WaitlistEntry[]
+  guestNotes         GuestNote[]
+  campaignDeliveries CampaignDelivery[]
+  promoRedemptions   PromoRedemption[]
+  agentConversations AgentConversation[]
+  channelIdentities  ChannelIdentity[]
+
+  @@index([venueId, email])
+  @@index([venueId, phone])
+}
+
+model GuestNote {
+  id        String   @id @default(cuid())
+  guestId   String
+  authorId  String?
+  body      String
+  createdAt DateTime @default(now())
+  guest     Guest    @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([guestId])
+}
+
+model GuestSegment {
+  id        String     @id @default(cuid())
+  venueId   String
+  name      String
+  filters   Json
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  venue     Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  campaigns Campaign[]
+
+  @@index([venueId])
+}
+
+model Reservation {
+  id                      String                     @id @default(cuid())
+  venueId                 String
+  serviceId               String
+  guestId                 String
+  dinerUserId             String?
+  dateTime                DateTime
+  partySize               Int
+  durationMinutes         Int
+  status                  ReservationStatus          @default(PENDING)
+  source                  ReservationSource          @default(WIDGET)
+  notes                   String?
+  allergies               String?
+  confirmationCode        String                     @unique @default(cuid())
+  depositAmountCents      Int?
+  depositStatus           PaymentStatus?
+  stripeCheckoutSessionId String?
+  stripePaymentIntentId   String?
+  commissionAmountCents   Int?
+  loyaltyPointsAwarded    Boolean                    @default(false)
+  promoCodeId             String?
+  discountCents           Int?
+  createdAt               DateTime                   @default(now())
+  updatedAt               DateTime                   @updatedAt
+  venue                   Venue                      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  promoCode               PromoCode?                 @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  service                 Service                    @relation(fields: [serviceId], references: [id])
+  guest                   Guest                      @relation(fields: [guestId], references: [id])
+  dinerUser               User?                      @relation("DinerReservations", fields: [dinerUserId], references: [id])
+  statusHistory           ReservationStatusHistory[]
+  tables                  ReservationTable[]
+  notificationLogs        NotificationLog[]
+  review                  Review?
+  paymentEvents           PaymentEvent[]
+  promoRedemption         PromoRedemption?
+
+  @@index([venueId, dateTime, status])
+  @@index([venueId, status])
+  @@index([dinerUserId])
+  @@index([source])
+}
+
+model ReservationTable {
+  id            String      @id @default(cuid())
+  reservationId String
+  tableId       String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  table         Table       @relation(fields: [tableId], references: [id])
+
+  @@unique([reservationId, tableId])
+}
+
+model ReservationStatusHistory {
+  id            String             @id @default(cuid())
+  reservationId String
+  fromStatus    ReservationStatus?
+  toStatus      ReservationStatus
+  changedBy     String?
+  note          String?
+  createdAt     DateTime           @default(now())
+  reservation   Reservation        @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  @@index([reservationId])
+}
+
+model WaitlistEntry {
+  id            String   @id @default(cuid())
+  venueId       String
+  serviceId     String
+  guestId       String
+  date          DateTime @db.Date
+  partySize     Int
+  preferredTime String?
+  notified      Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  venue         Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  service       Service  @relation(fields: [serviceId], references: [id])
+  guest         Guest    @relation(fields: [guestId], references: [id])
+
+  @@index([venueId, date])
+}
+
+model AvailabilityBlock {
+  id        String   @id @default(cuid())
+  venueId   String
+  serviceId String?
+  startTime DateTime
+  endTime   DateTime
+  reason    String?
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  service   Service? @relation(fields: [serviceId], references: [id])
+
+  @@index([venueId, startTime, endTime])
+}
+
+model NotificationLog {
+  id            String             @id @default(cuid())
+  venueId       String
+  reservationId String?
+  type          NotificationType
+  recipient     String
+  status        NotificationStatus @default(PENDING)
+  errorMessage  String?
+  sentAt        DateTime?
+  createdAt     DateTime           @default(now())
+  venue         Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  reservation   Reservation?       @relation(fields: [reservationId], references: [id])
+
+  @@index([status, type])
+}
+
+model Review {
+  id            String      @id @default(cuid())
+  venueId       String
+  reservationId String      @unique
+  userId        String
+  rating        Int
+  comment       String?
+  createdAt     DateTime    @default(now())
+  venue         Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([venueId])
+}
+
+model PaymentEvent {
+  id            String        @id @default(cuid())
+  reservationId String?
+  stripeEventId String        @unique
+  type          String
+  amountCents   Int
+  status        PaymentStatus
+  rawPayload    String?
+  createdAt     DateTime      @default(now())
+  reservation   Reservation?  @relation(fields: [reservationId], references: [id])
+
+  @@index([reservationId])
+}
+
+model PromoCode {
+  id           String            @id @default(cuid())
+  venueId      String
+  code         String
+  type         PromoType
+  valuePercent Int?
+  valueCents   Int?
+  minPartySize Int?
+  validFrom    DateTime
+  validTo      DateTime
+  maxUses      Int?
+  usedCount    Int               @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  venue        Venue             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+  campaigns    Campaign[]
+  redemptions  PromoRedemption[]
+
+  @@unique([venueId, code])
+  @@index([venueId])
+}
+
+model PromoRedemption {
+  id            String      @id @default(cuid())
+  promoCodeId   String
+  reservationId String      @unique
+  guestId       String
+  discountCents Int
+  createdAt     DateTime    @default(now())
+  promoCode     PromoCode   @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+  guest         Guest       @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([promoCodeId])
+}
+
+model Campaign {
+  id           String             @id @default(cuid())
+  venueId      String
+  name         String
+  channels     CampaignChannel[]
+  segmentId    String?
+  promoCodeId  String?
+  subject      String?
+  bodyTemplate String
+  status       CampaignStatus     @default(DRAFT)
+  scheduledAt  DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  venue        Venue              @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  segment      GuestSegment?      @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  promoCode    PromoCode?         @relation(fields: [promoCodeId], references: [id], onDelete: SetNull)
+  deliveries   CampaignDelivery[]
+
+  @@index([venueId, status])
+}
+
+model CampaignDelivery {
+  id         String          @id @default(cuid())
+  campaignId String
+  guestId    String
+  channel    CampaignChannel
+  recipient  String
+  status     DeliveryStatus  @default(PENDING)
+  externalId String?
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime        @default(now())
+  campaign   Campaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  guest      Guest           @relation(fields: [guestId], references: [id], onDelete: Cascade)
+
+  @@index([campaignId])
+  @@index([guestId])
+}
+
+model PosIntegration {
+  id                 String               @id @default(cuid())
+  venueId            String
+  provider           PosProvider
+  status             PosIntegrationStatus @default(DISCONNECTED)
+  credentials        Json
+  externalLocationId String?
+  lastSyncAt         DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  venue              Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  syncLogs           PosSyncLog[]
+
+  @@unique([venueId, provider])
+  @@index([venueId])
+}
+
+model PosSyncLog {
+  id            String         @id @default(cuid())
+  integrationId String
+  action        String
+  status        String
+  payload       Json?
+  error         String?
+  createdAt     DateTime       @default(now())
+  integration   PosIntegration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+}
+
+/// Generic OAuth/credential-based connection for any non-POS integration
+/// (Reserve with Google, OpenTable, TheFork, social channels, etc.).
+model IntegrationConnection {
+  id          String    @id @default(cuid())
+  venueId     String
+  provider    String
+  status      String    @default("CONNECTED")
+  credentials Json?
+  externalId  String?
+  metadata    Json?
+  lastSyncAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  venue       Venue     @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
+  @@unique([venueId, provider])
+  @@index([venueId])
+}
+
+/// Append-only ledger of loyalty point movements for marketplace diners.
+model LoyaltyTransaction {
+  id            String   @id @default(cuid())
+  userId        String
+  points        Int
+  reason        String
+  reservationId String?
+  createdAt     DateTime @default(now())
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Reward {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  pointsCost  Int
+  type        String             @default("PERK")
+  valueCents  Int?
+  isActive    Boolean            @default(true)
+  sortOrder   Int                @default(0)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  redemptions RewardRedemption[]
+}
+
+model RewardRedemption {
+  id          String    @id @default(cuid())
+  userId      String
+  rewardId    String
+  pointsSpent Int
+  code        String    @unique
+  status      String    @default("ACTIVE")
+  createdAt   DateTime  @default(now())
+  usedAt      DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward      Reward    @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Referral {
+  id             String    @id @default(cuid())
+  referrerId     String
+  referredUserId String?   @unique
+  referredEmail  String?
+  code           String
+  status         String    @default("PENDING")
+  rewardedAt     DateTime?
+  createdAt      DateTime  @default(now())
+  referrer       User      @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referredUser   User?     @relation("Referred", fields: [referredUserId], references: [id], onDelete: SetNull)
+
+  @@index([referrerId])
+}
+
+/// Conversación del agente IA por canal (web, whatsapp, instagram, phone).
+model AgentConversation {
+  id         String         @id @default(cuid())
+  venueId    String
+  channel    String
+  externalId String?
+  guestId    String?
+  status     String         @default("active")
+  metadata   Json?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  venue      Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest      Guest?         @relation(fields: [guestId], references: [id], onDelete: SetNull)
+  messages   AgentMessage[]
+  actions    AgentAction[]
+
+  @@index([venueId, channel])
+  @@index([externalId])
+}
+
+model AgentMessage {
+  id             String            @id @default(cuid())
+  conversationId String
+  role           String
+  content        String
+  toolCalls      Json?
+  latencyMs      Int?
+  createdAt      DateTime          @default(now())
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+}
+
+model AgentAction {
+  id             String            @id @default(cuid())
+  conversationId String
+  toolName       String
+  input          Json
+  output         Json?
+  success        Boolean
+  error          String?
+  latencyMs      Int?
+  createdAt      DateTime          @default(now())
+  conversation   AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, toolName])
+}
+
+/// Vincula identidad externa (teléfono hash, IG user id) con guest del venue.
+model ChannelIdentity {
+  id         String   @id @default(cuid())
+  venueId    String
+  channel    String
+  externalId String
+  guestId    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  venue      Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  guest      Guest?   @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@unique([venueId, channel, externalId])
+  @@index([guestId])
+}
