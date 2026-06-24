@@ -124,6 +124,10 @@ export async function updateTableDetails(
   venueId: string,
   tableId: string,
   data: {
+    name?: string;
+    minCapacity?: number;
+    maxCapacity?: number;
+    status?: "FREE" | "RESERVED" | "OCCUPIED" | "BLOCKED";
     width?: number;
     height?: number;
     rotation?: number;
@@ -136,4 +140,5 @@ export async function updateTableDetails(
     data,
   });
   revalidatePath("/dashboard/floor-plan");
+  revalidatePath("/dashboard/host");
 }

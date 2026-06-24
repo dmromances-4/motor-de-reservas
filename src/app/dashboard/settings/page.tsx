@@ -2,9 +2,8 @@ import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { getDashboardData } from "@/app/actions/dashboard";
 import { VenueSettingsTabs } from "@/components/dashboard/venue-settings-tabs";
+import { ServiceSettingsPanel } from "@/components/dashboard/service-settings-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const DAYS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
 type Props = { searchParams: Promise<{ tab?: string }> };
 
@@ -22,7 +21,7 @@ export default async function SettingsPage({ searchParams }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Ajustes</h2>
-        <p className="text-zinc-500">Políticas y configuración del local</p>
+        <p className="text-zinc-500">Políticas, turnos y configuración del local</p>
       </div>
 
       <Card>
@@ -36,28 +35,10 @@ export default async function SettingsPage({ searchParams }: Props) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Horarios por servicio</CardTitle>
+          <CardTitle>Servicios y turnos</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {venue.services.map((service) => (
-            <div key={service.id}>
-              <h3 className="mb-2 font-medium">{service.name}</h3>
-              <div className="grid gap-2 text-sm sm:grid-cols-2">
-                {service.schedules.map((s) => (
-                  <div
-                    key={s.id}
-                    className="rounded-md border border-zinc-200 px-3 py-2"
-                  >
-                    <span className="font-medium">{DAYS[s.dayOfWeek]}</span>:{" "}
-                    {s.openTime} – {s.closeTime}
-                    {!s.isActive && (
-                      <span className="ml-2 text-zinc-400">(inactivo)</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
+        <CardContent>
+          <ServiceSettingsPanel venueId={venue.id} services={venue.services} />
         </CardContent>
       </Card>
     </div>

@@ -72,7 +72,7 @@ export default function HomePage() {
               <Link href="/signup">Empezar gratis</Link>
             </Button>
             <Button asChild size="lg" variant="outline">
-              <Link href="/book/la-trattoria-demo">Ver widget demo</Link>
+              <Link href="/book/la-trattoria">Ver widget demo</Link>
             </Button>
           </div>
         </section>

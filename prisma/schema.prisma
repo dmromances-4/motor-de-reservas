@@ -256,12 +256,14 @@ model Membership {
 }
 
 model Service {
-  id                 String              @id @default(cuid())
-  venueId            String
-  name               String
-  sortOrder          Int                 @default(0)
-  durationMinutes    Int                 @default(90)
-  isActive           Boolean             @default(true)
+  id                     String              @id @default(cuid())
+  venueId                String
+  name                   String
+  sortOrder              Int                 @default(0)
+  durationMinutes        Int                 @default(90)
+  maxCoversPerSlot       Int?
+  maxReservationsPerSlot Int?
+  isActive               Boolean             @default(true)
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   venue              Venue               @relation(fields: [venueId], references: [id], onDelete: Cascade)

@@ -9,7 +9,11 @@ import {
   aggregateChannelStats,
   getChannelSummary,
 } from "@/domain/integrations/channel-stats-service";
-import type { IntegrationStatusContext } from "@/domain/integrations/status-service";
+import { INTEGRATION_CATALOG } from "@/domain/integrations/catalog";
+import {
+  resolveIntegrationStatus,
+  type IntegrationStatusContext,
+} from "@/domain/integrations/status-service";
 
 export default async function IntegrationsPage() {
   const session = await auth();
@@ -77,6 +81,18 @@ export default async function IntegrationsPage() {
     },
   };
 
+  const statusCounts = INTEGRATION_CATALOG.reduce(
+    (acc, integration) => {
+      const status = resolveIntegrationStatus(integration, statusContext);
+      acc[status] = (acc[status] ?? 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
+  const connectedCount =
+    (statusCounts.CONNECTED ?? 0) + (statusCounts.ACTIVE ?? 0);
+  const availableCount = statusCounts.AVAILABLE ?? 0;
+
   return (
     <div className="space-y-8">
       <div>
@@ -84,6 +100,27 @@ export default async function IntegrationsPage() {
         <p className="text-zinc-500">
           Conecta canales, TPVs, marketing y herramientas de tu restaurante
         </p>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-3xl font-bold text-emerald-600">{connectedCount}</p>
+            <p className="text-sm text-zinc-500">Conectadas o activas</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-3xl font-bold">{availableCount}</p>
+            <p className="text-sm text-zinc-500">Disponibles para conectar</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-3xl font-bold">{connections.length + posIntegrations.filter((p) => p.status === "CONNECTED").length}</p>
+            <p className="text-sm text-zinc-500">Conexiones en este local</p>
+          </CardContent>
+        </Card>
       </div>
 
       <ChannelStatsPanel summary={summary} monthLabel={monthLabel} />

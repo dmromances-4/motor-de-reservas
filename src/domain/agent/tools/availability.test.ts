@@ -13,7 +13,7 @@ import { getAvailabilityBySlug } from "@/domain/reservations/service";
 
 const ctx = {
   venueId: "venue-1",
-  venueSlug: "la-trattoria-demo",
+  venueSlug: "la-trattoria",
   channel: "internal" as const,
 };
 
@@ -27,7 +27,7 @@ describe("executeAvailabilityCheck", () => {
       venue: {
         id: "venue-1",
         name: "La Trattoria Demo",
-        slug: "la-trattoria-demo",
+        slug: "la-trattoria",
       } as never,
       services: [
         {

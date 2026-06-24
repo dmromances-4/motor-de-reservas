@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +33,7 @@ type Venue = {
   capacityMode: string;
   maxPartySize: number;
   bufferMinutes: number;
+  slotIntervalMinutes: number;
   menuUrl: string | null;
   cancellationHours: number;
   primaryColor: string;
@@ -141,6 +143,7 @@ export function VenueSettingsTabs({
         capacityMode: String(form.get("capacityMode") ?? "simple"),
         maxPartySize: Number(form.get("maxPartySize")),
         bufferMinutes: Number(form.get("bufferMinutes")),
+        slotIntervalMinutes: Number(form.get("slotIntervalMinutes")),
         menuUrl: String(form.get("menuUrl") ?? "") || null,
         cancellationHours: Number(form.get("cancellationHours")),
         primaryColor: String(form.get("primaryColor") ?? ""),
@@ -251,6 +254,13 @@ export function VenueSettingsTabs({
                 <option value="simple">Simple (cubiertos)</option>
                 <option value="tables">Por mesas</option>
               </select>
+              <p className="mt-1 text-xs text-zinc-500">
+                Configura el mapa de sala en{" "}
+                <Link href="/dashboard/floor-plan" className="font-medium underline">
+                  Mapa de sala
+                </Link>
+                .
+              </p>
             </div>
             <div>
               <Label htmlFor="maxPartySize">Máx. comensales/reserva</Label>
@@ -259,6 +269,17 @@ export function VenueSettingsTabs({
             <div>
               <Label htmlFor="bufferMinutes">Buffer (min)</Label>
               <Input id="bufferMinutes" name="bufferMinutes" type="number" defaultValue={venue.bufferMinutes} />
+            </div>
+            <div>
+              <Label htmlFor="slotIntervalMinutes">Intervalo entre turnos (min)</Label>
+              <Input
+                id="slotIntervalMinutes"
+                name="slotIntervalMinutes"
+                type="number"
+                min={5}
+                step={5}
+                defaultValue={venue.slotIntervalMinutes}
+              />
             </div>
             <div>
               <Label htmlFor="cancellationHours">Cancelación (horas antes)</Label>

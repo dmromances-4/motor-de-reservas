@@ -52,7 +52,9 @@ export function IntegrationsCatalog({
     title: string;
   } | null>(null);
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<IntegrationCategory | "all">("all");
+  const [category, setCategory] = useState<IntegrationCategory | "all">(
+    "booking_channels",
+  );
 
   function resolveStats(def: IntegrationDefinition) {
     if (def.statsKey) {

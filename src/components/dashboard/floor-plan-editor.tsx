@@ -19,6 +19,7 @@ type TableItem = {
   name: string;
   minCapacity: number;
   maxCapacity: number;
+  status: "FREE" | "RESERVED" | "OCCUPIED" | "BLOCKED";
   posX: number;
   posY: number;
   width: number;
@@ -154,7 +155,64 @@ export function FloorPlanEditor({
 
       {table && (
         <div className="grid gap-3 rounded-lg border p-4 sm:grid-cols-4">
-          <p className="font-medium sm:col-span-4">{table.name}</p>
+          <div className="sm:col-span-2">
+            <Label>Nombre</Label>
+            <Input
+              key={`${table.id}-name`}
+              defaultValue={table.name}
+              onBlur={(e) =>
+                updateTableDetails(venueId, table.id, {
+                  name: e.target.value.trim() || table.name,
+                })
+              }
+            />
+          </div>
+          <div>
+            <Label>Mín. comensales</Label>
+            <Input
+              key={`${table.id}-min`}
+              type="number"
+              min={1}
+              defaultValue={table.minCapacity}
+              onBlur={(e) =>
+                updateTableDetails(venueId, table.id, {
+                  minCapacity: Number(e.target.value),
+                })
+              }
+            />
+          </div>
+          <div>
+            <Label>Máx. comensales</Label>
+            <Input
+              key={`${table.id}-max`}
+              type="number"
+              min={1}
+              defaultValue={table.maxCapacity}
+              onBlur={(e) =>
+                updateTableDetails(venueId, table.id, {
+                  maxCapacity: Number(e.target.value),
+                })
+              }
+            />
+          </div>
+          <div>
+            <Label>Estado</Label>
+            <select
+              key={`${table.id}-status`}
+              defaultValue={table.status}
+              className="h-10 w-full rounded-md border px-2 text-sm"
+              onChange={(e) =>
+                updateTableDetails(venueId, table.id, {
+                  status: e.target.value as TableItem["status"],
+                })
+              }
+            >
+              <option value="FREE">Libre</option>
+              <option value="RESERVED">Reservada</option>
+              <option value="OCCUPIED">Ocupada</option>
+              <option value="BLOCKED">Bloqueada</option>
+            </select>
+          </div>
           <div>
             <Label>Ancho</Label>
             <Input

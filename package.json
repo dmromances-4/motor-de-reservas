@@ -18,6 +18,7 @@
     "db:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:seed:venues": "tsx prisma/seed-example-venues.ts",
     "db:geocode": "node scripts/geocode-venues.mjs",
     "test": "vitest run"
   },

@@ -47,6 +47,7 @@ export async function updateVenueSettings(data: {
   capacityMode?: string;
   maxPartySize?: number;
   bufferMinutes?: number;
+  slotIntervalMinutes?: number;
   menuUrl?: string | null;
   cancellationHours?: number;
   primaryColor?: string;
@@ -160,6 +161,7 @@ export async function updateVenueSettings(data: {
       capacityMode: data.capacityMode,
       maxPartySize: data.maxPartySize,
       bufferMinutes: data.bufferMinutes,
+      slotIntervalMinutes: data.slotIntervalMinutes,
       menuUrl: data.menuUrl,
       cancellationHours: data.cancellationHours,
       primaryColor: data.primaryColor,
@@ -246,6 +248,35 @@ export async function updateServiceSchedule(data: {
   });
 
   revalidatePath("/dashboard/settings");
+}
+
+export async function updateService(data: {
+  venueId: string;
+  serviceId: string;
+  name?: string;
+  durationMinutes?: number;
+  maxCoversPerSlot?: number | null;
+  maxReservationsPerSlot?: number | null;
+}) {
+  await requireVenueAccess(data.venueId);
+
+  const service = await prisma.service.findFirst({
+    where: { id: data.serviceId, venueId: data.venueId },
+  });
+  if (!service) throw new Error("SERVICE_NOT_FOUND");
+
+  await prisma.service.update({
+    where: { id: data.serviceId },
+    data: {
+      name: data.name,
+      durationMinutes: data.durationMinutes,
+      maxCoversPerSlot: data.maxCoversPerSlot,
+      maxReservationsPerSlot: data.maxReservationsPerSlot,
+    },
+  });
+
+  revalidatePath("/dashboard/settings");
+  revalidatePath("/book/[slug]", "page");
 }
 
 export async function createManualReservation(data: {

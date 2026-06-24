@@ -26,7 +26,7 @@ import { prisma } from "@/lib/prisma";
 
 const ctx = {
   venueId: "venue-1",
-  venueSlug: "la-trattoria-demo",
+  venueSlug: "la-trattoria",
   channel: "internal" as const,
   agentTableOptimizationEnabled: false,
 };

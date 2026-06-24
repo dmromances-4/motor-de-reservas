@@ -134,6 +134,44 @@ export function listAvailableTablesForSlot(
   );
 }
 
+function getSlotBookingStats(
+  slotStart: Date,
+  reservations: ExistingReservation[],
+): { covers: number; count: number } {
+  let covers = 0;
+  let count = 0;
+  const slotMs = slotStart.getTime();
+  for (const reservation of reservations) {
+    if (!ACTIVE_STATUSES.has(reservation.status)) continue;
+    if (reservation.dateTime.getTime() !== slotMs) continue;
+    covers += reservation.partySize;
+    count += 1;
+  }
+  return { covers, count };
+}
+
+function withinSlotLimits(
+  slotStart: Date,
+  partySize: number,
+  reservations: ExistingReservation[],
+  service: AvailabilityInput["service"],
+): boolean {
+  const { covers, count } = getSlotBookingStats(slotStart, reservations);
+  if (
+    service.maxCoversPerSlot != null &&
+    covers + partySize > service.maxCoversPerSlot
+  ) {
+    return false;
+  }
+  if (
+    service.maxReservationsPerSlot != null &&
+    count + 1 > service.maxReservationsPerSlot
+  ) {
+    return false;
+  }
+  return true;
+}
+
 export function calculateSlots(input: AvailabilityInput): AvailabilitySlot[] {
   const {
     date,
@@ -168,6 +206,11 @@ export function calculateSlots(input: AvailabilityInput): AvailabilitySlot[] {
     const checkEnd = addMinutes(slotEnd, venue.bufferMinutes);
 
     if (!isBlocked(cursor, checkEnd, blocks)) {
+      if (!withinSlotLimits(cursor, partySize, existingReservations, service)) {
+        cursor = addMinutes(cursor, venue.slotIntervalMinutes);
+        continue;
+      }
+
       if (venue.capacityMode === "tables" && tables?.length) {
         const tableIds = findAvailableTables(
           cursor,
@@ -178,10 +221,18 @@ export function calculateSlots(input: AvailabilityInput): AvailabilitySlot[] {
           venue.bufferMinutes,
         );
         if (tableIds) {
+          const { covers, count } = getSlotBookingStats(
+            cursor,
+            existingReservations,
+          );
+          const slotCap =
+            service.maxCoversPerSlot != null
+              ? Math.max(0, service.maxCoversPerSlot - covers)
+              : partySize;
           slots.push({
             dateTime: cursor.toISOString(),
             serviceId: service.id,
-            availableCapacity: partySize,
+            availableCapacity: slotCap,
             tableIds,
           });
         }
@@ -193,11 +244,24 @@ export function calculateSlots(input: AvailabilityInput): AvailabilitySlot[] {
           venue.bufferMinutes,
         );
         const remaining = venue.totalCapacity - occupancy;
-        if (remaining >= partySize) {
+        const { covers, count } = getSlotBookingStats(
+          cursor,
+          existingReservations,
+        );
+        const slotCoverCap =
+          service.maxCoversPerSlot != null
+            ? Math.max(0, service.maxCoversPerSlot - covers)
+            : remaining;
+        const slotReservationCap =
+          service.maxReservationsPerSlot != null
+            ? Math.max(0, service.maxReservationsPerSlot - count)
+            : 1;
+        const effectiveRemaining = Math.min(remaining, slotCoverCap);
+        if (remaining >= partySize && effectiveRemaining >= partySize && slotReservationCap > 0) {
           slots.push({
             dateTime: cursor.toISOString(),
             serviceId: service.id,
-            availableCapacity: remaining,
+            availableCapacity: effectiveRemaining,
           });
         }
       }

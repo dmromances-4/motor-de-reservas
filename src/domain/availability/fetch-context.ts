@@ -82,6 +82,8 @@ export async function buildAvailabilityInput(
     service: {
       id: service.id,
       durationMinutes: service.durationMinutes,
+      maxCoversPerSlot: service.maxCoversPerSlot,
+      maxReservationsPerSlot: service.maxReservationsPerSlot,
       schedules: service.schedules,
     },
     existingReservations: reservations.map((r) => ({

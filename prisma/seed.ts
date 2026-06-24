@@ -2,6 +2,8 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { seedExampleVenues } from "./seed-example-venues";
+import { seedIntegrationsDemo } from "./seed-integrations";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL! }),
@@ -21,7 +23,10 @@ async function main() {
 
   const venue = await prisma.venue.upsert({
     where: { slug: "la-trattoria" },
-    update: {},
+    update: {
+      capacityMode: "tables",
+      totalCapacity: 40,
+    },
     create: {
       organizationId: org.id,
       slug: "la-trattoria",
@@ -35,6 +40,8 @@ async function main() {
       cuisineTypes: ["Italiana"],
       establishmentTypes: ["Restaurante"],
       neighborhood: "Centro",
+      capacityMode: "tables",
+      totalCapacity: 40,
     },
   });
 
@@ -77,12 +84,17 @@ async function main() {
 
   const service = await prisma.service.upsert({
     where: { id: "seed-service-comida" },
-    update: {},
+    update: {
+      maxCoversPerSlot: 24,
+      maxReservationsPerSlot: 6,
+    },
     create: {
       id: "seed-service-comida",
       venueId: venue.id,
       name: "Comida",
       durationMinutes: 90,
+      maxCoversPerSlot: 24,
+      maxReservationsPerSlot: 6,
       sortOrder: 0,
     },
   });
@@ -112,27 +124,63 @@ async function main() {
       venueId: venue.id,
       name: "Sala principal",
       sortOrder: 0,
+      layoutWidth: 900,
+      layoutHeight: 600,
     },
   });
 
-  await prisma.table.upsert({
-    where: { id: "seed-table-1" },
-    update: {},
-    create: {
-      id: "seed-table-1",
-      zoneId: zone.id,
-      name: "Mesa 1",
-      minCapacity: 2,
-      maxCapacity: 4,
-      posX: 100,
-      posY: 100,
-    },
-  });
+  const demoTables = [
+    { id: "seed-table-1", name: "Mesa 1", minCapacity: 2, maxCapacity: 4, posX: 80, posY: 80 },
+    { id: "seed-table-2", name: "Mesa 2", minCapacity: 2, maxCapacity: 4, posX: 220, posY: 80 },
+    { id: "seed-table-3", name: "Mesa 3", minCapacity: 4, maxCapacity: 6, posX: 360, posY: 80 },
+    { id: "seed-table-4", name: "Mesa 4", minCapacity: 4, maxCapacity: 6, posX: 500, posY: 80 },
+    { id: "seed-table-5", name: "Mesa 5", minCapacity: 2, maxCapacity: 2, posX: 120, posY: 260 },
+    { id: "seed-table-6", name: "Barra 1", minCapacity: 1, maxCapacity: 2, posX: 320, posY: 280, shape: "rect", width: 120, height: 60 },
+    { id: "seed-table-7", name: "Terraza 1", minCapacity: 2, maxCapacity: 4, posX: 600, posY: 260 },
+    { id: "seed-table-8", name: "Terraza 2", minCapacity: 4, maxCapacity: 8, posX: 720, posY: 260 },
+  ] as const;
+
+  for (const table of demoTables) {
+    await prisma.table.upsert({
+      where: { id: table.id },
+      update: {
+        zoneId: zone.id,
+        name: table.name,
+        minCapacity: table.minCapacity,
+        maxCapacity: table.maxCapacity,
+        posX: table.posX,
+        posY: table.posY,
+        width: "width" in table ? table.width : 80,
+        height: "height" in table ? table.height : 80,
+        shape: "shape" in table ? table.shape : "round",
+      },
+      create: {
+        id: table.id,
+        zoneId: zone.id,
+        name: table.name,
+        minCapacity: table.minCapacity,
+        maxCapacity: table.maxCapacity,
+        posX: table.posX,
+        posY: table.posY,
+        width: "width" in table ? table.width : 80,
+        height: "height" in table ? table.height : 80,
+        shape: "shape" in table ? table.shape : "round",
+      },
+    });
+  }
+
+  const integrationStats = await seedIntegrationsDemo(prisma, venue.id, service.id);
+
+  const { upserted, skipped } = await seedExampleVenues(prisma, org.id);
 
   console.log("Seed complete:");
   console.log("  Staff: owner@demo.local / password123");
   console.log("  Diner: diner@demo.local / password123");
   console.log(`  Venue: /book/${venue.slug}`);
+  console.log(`  Example venues: ${upserted} imported, ${skipped} skipped`);
+  console.log(
+    `  Integrations demo: ${integrationStats.connections} conexiones, ${integrationStats.syncLogs} sync logs, ${integrationStats.channelReservations} reservas canal`,
+  );
 }
 
 main()

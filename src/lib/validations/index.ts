@@ -1,5 +1,22 @@
 import { z } from "zod";
 
+const optionalPhone = z
+  .string()
+  .optional()
+  .transform((v) => {
+    const trimmed = v?.trim();
+    return trimmed ? trimmed : undefined;
+  })
+  .pipe(z.string().min(6).max(20).optional());
+
+const optionalText = z
+  .string()
+  .optional()
+  .transform((v) => {
+    const trimmed = v?.trim();
+    return trimmed ? trimmed : undefined;
+  });
+
 export const availabilityQuerySchema = z.object({
   venueId: z.string().optional(),
   slug: z.string().optional(),
@@ -16,11 +33,11 @@ export const createReservationSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().max(100).optional(),
   email: z.string().email(),
-  phone: z.string().min(6).max(20).optional(),
-  notes: z.string().max(500).optional(),
-  allergies: z.string().max(500).optional(),
+  phone: optionalPhone,
+  notes: optionalText.pipe(z.string().max(500).optional()),
+  allergies: optionalText.pipe(z.string().max(500).optional()),
   source: z.enum(["WIDGET", "PHONE", "WALK_IN", "MARKETPLACE"]).default("WIDGET"),
-  promoCode: z.string().max(32).optional(),
+  promoCode: optionalText.pipe(z.string().max(32).optional()),
 });
 
 export const updateReservationSchema = z.object({
@@ -69,10 +86,10 @@ export const checkoutSchema = z.object({
   firstName: z.string().min(1).max(100),
   lastName: z.string().max(100).optional(),
   email: z.string().email(),
-  phone: z.string().min(6).max(20).optional(),
-  notes: z.string().max(500).optional(),
-  allergies: z.string().max(500).optional(),
-  promoCode: z.string().max(32).optional(),
+  phone: optionalPhone,
+  notes: optionalText.pipe(z.string().max(500).optional()),
+  allergies: optionalText.pipe(z.string().max(500).optional()),
+  promoCode: optionalText.pipe(z.string().max(32).optional()),
 });
 
 export const reviewSchema = z.object({

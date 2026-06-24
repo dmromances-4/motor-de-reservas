@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatTime } from "@/lib/utils";
+import { formatDate, formatTime } from "@/lib/utils";
 import { AgentChatPanel } from "@/components/booking/agent-chat-panel";
 
 type PublicVenue = {
@@ -20,6 +20,85 @@ type PublicVenue = {
 };
 
 type Slot = { dateTime: string; availableCapacity: number };
+
+const STEPS = ["Fecha", "Hora", "Datos", "Confirmación"];
+
+function formatApiError(data: unknown, fallback: string): string {
+  if (!data || typeof data !== "object") return fallback;
+  const err = (data as { error?: unknown }).error;
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object" && "formErrors" in err) {
+    const formErrors = (err as { formErrors?: string[] }).formErrors;
+    if (formErrors?.length) return formErrors.join(". ");
+  }
+  return fallback;
+}
+
+function buildReservationPayload(
+  slug: string,
+  serviceId: string,
+  selectedSlot: string,
+  partySize: number,
+  form: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone: string;
+    notes: string;
+    allergies: string;
+    promoCode: string;
+  },
+  source: "WIDGET" | "MARKETPLACE",
+) {
+  return {
+    slug,
+    serviceId,
+    dateTime: selectedSlot,
+    partySize,
+    firstName: form.firstName.trim(),
+    lastName: form.lastName.trim() || undefined,
+    email: form.email.trim(),
+    phone: form.phone.trim() || undefined,
+    notes: form.notes.trim() || undefined,
+    allergies: form.allergies.trim() || undefined,
+    promoCode: form.promoCode.trim() || undefined,
+    source,
+  };
+}
+
+function StepIndicator({ current }: { current: number }) {
+  return (
+    <ol className="mb-2 flex items-center justify-between gap-1 text-xs">
+      {STEPS.map((label, index) => {
+        const n = index + 1;
+        const active = n === current;
+        const done = n < current;
+        return (
+          <li
+            key={label}
+            className="flex flex-1 flex-col items-center gap-1"
+            style={{ color: active || done ? "var(--ink)" : "var(--muted)" }}
+          >
+            <span
+              className="flex h-7 w-7 items-center justify-center rounded-full text-[11px] font-semibold"
+              style={{
+                backgroundColor: active
+                  ? "var(--teal-soft)"
+                  : done
+                    ? "var(--teal)"
+                    : "var(--bg-2)",
+                color: done ? "#fff" : "inherit",
+              }}
+            >
+              {n}
+            </span>
+            <span className="hidden sm:inline">{label}</span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export function BookingWidget({
   slug,
@@ -87,21 +166,17 @@ export function BookingWidget({
     if (!initialPromoCode.trim()) return;
     const code = initialPromoCode.trim().toUpperCase();
     setForm((f) => ({ ...f, promoCode: code }));
-    fetch(`/api/venues/${slug}/promo/validate`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code, partySize }),
-    })
+    fetch(
+      `/api/venues/${slug}/promo/validate?code=${encodeURIComponent(code)}&partySize=${partySize}`,
+    )
       .then(async (r) => {
         if (!r.ok) throw new Error("validate failed");
         return r.json();
       })
       .then((data) => {
-        if (data.valid) {
+        if (data.ok) {
           setPromoMessage(
-            data.type === "PERCENT"
-              ? `Promo aplicada: ${data.valuePercent}% de descuento`
-              : `Promo aplicada: ${((data.discountCents ?? 0) / 100).toFixed(2)} €`,
+            `Promo aplicada: ${(data.discountCents / 100).toFixed(2)} € de descuento`,
           );
         } else {
           setPromoMessage(data.error ?? "Código no válido");
@@ -135,15 +210,14 @@ export function BookingWidget({
     setLoading(true);
     setError("");
 
-    const payload = {
+    const payload = buildReservationPayload(
       slug,
       serviceId,
-      dateTime: selectedSlot,
+      selectedSlot,
       partySize,
-      ...form,
-      promoCode: form.promoCode.trim() || undefined,
+      form,
       source,
-    };
+    );
 
     if (source === "MARKETPLACE" && depositAmountCents > 0) {
       const res = await fetch("/api/marketplace/checkout", {
@@ -155,10 +229,10 @@ export function BookingWidget({
       setLoading(false);
       if (!res.ok) {
         setError(
-          data.error === "STRIPE_NOT_CONFIGURED"
-            ? "Pagos no configurados. Contacta al restaurante."
-            : "No se pudo iniciar el pago",
-        );
+        data.error === "STRIPE_NOT_CONFIGURED"
+          ? "Pagos no configurados. Contacta al restaurante."
+          : formatApiError(data, "No se pudo iniciar el pago"),
+      );
         return;
       }
       if (data.url) {
@@ -180,7 +254,7 @@ export function BookingWidget({
       setError(
         data.error === "SLOT_UNAVAILABLE"
           ? "Ese horario ya no está disponible. Elige otro."
-          : "No se pudo completar la reserva",
+          : formatApiError(data, "No se pudo completar la reserva"),
       );
       return;
     }
@@ -202,6 +276,15 @@ export function BookingWidget({
     );
   }
 
+  function resetBooking() {
+    setStep(1);
+    setSelectedSlot(null);
+    setSlots([]);
+    setConfirmation(null);
+    setError("");
+    setPromoMessage("");
+  }
+
   const accent = venue.primaryColor;
   const needsDeposit = source === "MARKETPLACE" && depositAmountCents > 0;
 
@@ -215,6 +298,7 @@ export function BookingWidget({
         </p>
       </CardHeader>
       <CardContent className="space-y-4 pt-6">
+        <StepIndicator current={step} />
         {error && (
           <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -262,7 +346,7 @@ export function BookingWidget({
               disabled={!date || loading}
               onClick={loadSlots}
             >
-              Ver horarios
+              {loading ? "Cargando horarios…" : "Ver horarios"}
             </Button>
           </div>
         )}
@@ -286,9 +370,14 @@ export function BookingWidget({
                       setSelectedSlot(slot.dateTime);
                       setStep(3);
                     }}
-                    className="rounded-xl border border-[var(--line-strong)] px-3 py-2 text-sm font-medium text-[var(--ink)] transition-colors hover:border-[var(--teal)] hover:text-[var(--teal-deep)]"
+                    className="rounded-xl border border-[var(--line-strong)] px-2 py-2 text-left text-sm transition-colors hover:border-[var(--teal)]"
                   >
-                    {formatTime(slot.dateTime, venue.timezone)}
+                    <span className="block font-medium text-[var(--ink)]">
+                      {formatTime(slot.dateTime, venue.timezone)}
+                    </span>
+                    <span className="block text-[11px] text-[var(--muted)]">
+                      {slot.availableCapacity} cubiertos
+                    </span>
                   </button>
                 ))}
               </div>
@@ -395,9 +484,11 @@ export function BookingWidget({
               disabled={loading || !form.firstName || !form.email}
               onClick={submitReservation}
             >
-              {needsDeposit
-                ? `Pagar depósito y reservar`
-                : "Confirmar reserva"}
+              {loading
+                ? "Confirmando…"
+                : needsDeposit
+                  ? "Pagar depósito y reservar"
+                  : "Confirmar reserva"}
             </Button>
             <Button variant="outline" onClick={() => setStep(2)}>
               Volver
@@ -406,19 +497,32 @@ export function BookingWidget({
         )}
 
         {step === 4 && confirmation && (
-          <div className="space-y-3 text-center">
+          <div className="space-y-4 text-center">
             <p className="font-display text-lg font-semibold text-emerald-600">
               ¡Reserva confirmada!
             </p>
-            <p className="text-sm" style={{ color: "var(--text)" }}>
-              {formatTime(confirmation.dateTime, venue.timezone)}
-            </p>
-            <p className="text-sm" style={{ color: "var(--ink)" }}>
-              Código: <strong>{confirmation.code}</strong>
-            </p>
+            <div
+              className="rounded-xl px-4 py-3 text-sm"
+              style={{ backgroundColor: "var(--bg-2)" }}
+            >
+              <p style={{ color: "var(--ink)" }}>
+                {formatDate(confirmation.dateTime, venue.timezone)} ·{" "}
+                {formatTime(confirmation.dateTime, venue.timezone)}
+              </p>
+              <p className="mt-1" style={{ color: "var(--text)" }}>
+                {partySize} comensales
+              </p>
+              <p className="mt-2 font-medium" style={{ color: "var(--ink)" }}>
+                Código: {confirmation.code}
+              </p>
+            </div>
             <p className="text-xs" style={{ color: "var(--muted)" }}>
-              Recibirás un email de confirmación.
+              Guarda el código. El restaurante verá la reserva en el panel al
+              seleccionar esta fecha.
             </p>
+            <Button className="w-full" variant="outline" onClick={resetBooking}>
+              Hacer otra reserva
+            </Button>
           </div>
         )}
       </CardContent>

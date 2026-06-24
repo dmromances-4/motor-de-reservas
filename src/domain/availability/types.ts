@@ -42,6 +42,8 @@ export type VenueAvailabilityConfig = {
 export type ServiceConfig = {
   id: string;
   durationMinutes: number;
+  maxCoversPerSlot?: number | null;
+  maxReservationsPerSlot?: number | null;
   schedules: ServiceScheduleDay[];
 };
 
